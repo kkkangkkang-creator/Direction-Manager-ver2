@@ -1,0 +1,11 @@
+{
+    "display_name": "Direction-Manager",
+    "loading_order": 9,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "kkkangkkang-creator (fork of temporary0723/Direction-Manager)",
+    "version": "2.0.0",
+    "homePage": "https://github.com/kkkangkkang-creator/Diretion-Manager-ver2"
+}
