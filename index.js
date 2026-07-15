@@ -1,12 +1,12 @@
-// Direction-Manager í™•ìž¥ - direction í”Œë ˆì´ìŠ¤í™€ë” ê´€ë¦¬ (ì»´íŒ©íŠ¸ UI ì „ìš©)
+// Direction-Manager 확장 - direction 플레이스홀더 관리 (컴팩트 UI 전용)
 import { extension_settings, getContext } from "../../../extensions.js";
 import { saveSettingsDebounced, eventSource, event_types, characters, this_chid } from "../../../../script.js";
 
-// í™•ìž¥ ì„¤ì •
+// 확장 설정
 const extensionName = "Direction-Manager";
 const LOG_PREFIX = "[Direction-Manager v2]";
 
-// ê¸°ë³¸ Direction í”„ë¡¬í”„íŠ¸
+// 기본 Direction 프롬프트
 const DEFAULT_DIRECTION_PROMPT = `<direction>
 - Resume the story based on the director's instructions below.
 - The director only provides drafts; refine them into natural prose instead of directly quoting the sentences.
@@ -35,22 +35,22 @@ const defaultSettings = {
     presets: {
         direction: [],
     },
-    // í™•ìž¥ ë©”ë‰´ ì„¤ì •
+    // 확장 메뉴 설정
     extensionEnabled: true,
     directionPrompt: DEFAULT_DIRECTION_PROMPT,
-    promptDepth: 1, // 0: Chat History ëì— ì‚½ìž…, >0: ëì—ì„œë¶€í„° Në²ˆì§¸ ìœ„ì¹˜ì— ì‚½ìž…
+    promptDepth: 1, // 0: Chat History 끝에 삽입, >0: 끝에서부터 N번째 위치에 삽입
     defaultScope: "chat",
     _migratedV2: false,
 };
 
 let currentScope = "chat";
 
-// í”Œë ˆì´ìŠ¤í™€ë” ì •ì˜
+// 플레이스홀더 정의
 const placeholders = [
     { key: "direction", name: "{{direction}}", isCustom: true },
 ];
 
-// ì»´íŒ©íŠ¸ UI ê´€ë ¨ ë³€ìˆ˜ë“¤
+// 컴팩트 UI 관련 변수들
 let compactUIButton = null;
 let compactUIPopup = null;
 
@@ -85,7 +85,7 @@ function sanitizePresets(presets) {
             .filter(item => item && typeof item.content === "string")
             .map(item => ({
                 id: typeof item.id === "string" && item.id ? item.id : `${Date.now()}-${Math.random()}`,
-                name: typeof item.name === "string" && item.name.trim() ? item.name.trim() : "ì´ë¦„ ì—†ëŠ” í”„ë¦¬ì…‹",
+                name: typeof item.name === "string" && item.name.trim() ? item.name.trim() : "이름 없는 프리셋",
                 content: item.content,
             }))
         : [];
@@ -216,18 +216,18 @@ function getScopeAvailability(scope) {
         const context = getContext();
 
         if (isGroupContext(context)) {
-            return { available: false, reason: "ê·¸ë£¹ ì±„íŒ…ì—ì„œëŠ” ìºë¦­í„° ìŠ¤ì½”í”„ë¥¼ ì‚¬ìš©í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤" };
+            return { available: false, reason: "그룹 채팅에서는 캐릭터 스코프를 사용할 수 없습니다" };
         }
 
         if (!getCurrentCharKey()) {
-            return { available: false, reason: "í˜„ìž¬ ìºë¦­í„°ë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤" };
+            return { available: false, reason: "현재 캐릭터를 찾을 수 없습니다" };
         }
 
         return { available: true, reason: "" };
     }
 
     if (!getCurrentChatKey()) {
-        return { available: false, reason: "í˜„ìž¬ ì±„íŒ…ì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤" };
+        return { available: false, reason: "현재 채팅을 찾을 수 없습니다" };
     }
 
     return { available: true, reason: "" };
@@ -276,7 +276,7 @@ function migrateV1SettingsIfNeeded() {
         delete settings.direction;
     }
 
-    // v1ì— ìžˆë˜ {{char}} / {{user}} ì €ìž¥ê°’ì€ ë” ì´ìƒ ì‚¬ìš©í•˜ì§€ ì•Šìœ¼ë¯€ë¡œ ì‚­ì œ
+    // v1에 있던 {{char}} / {{user}} 저장값은 더 이상 사용하지 않으므로 삭제
     if (settings.char !== undefined) {
         delete settings.char;
     }
@@ -286,11 +286,11 @@ function migrateV1SettingsIfNeeded() {
     }
 
     settings._migratedV2 = true;
-    console.log(`${LOG_PREFIX} v1 ì„¤ì •ì„ v2 global ìŠ¤ì½”í”„ë¡œ ë§ˆì´ê·¸ë ˆì´ì…˜í–ˆìŠµë‹ˆë‹¤. {{char}}/{{user}} ê°’ì€ ì œê±°í–ˆìŠµë‹ˆë‹¤.`);
+    console.log(`${LOG_PREFIX} v1 설정을 v2 global 스코프로 마이그레이션했습니다. {{char}}/{{user}} 값은 제거했습니다.`);
     return true;
 }
 
-// ì„¤ì • ë¡œë“œ
+// 설정 로드
 async function loadSettings() {
     const settings = getSettings();
 
@@ -383,7 +383,7 @@ function resolveEffectiveSettings(placeholderKey) {
     return resolveEffectiveSettingsWithSource(placeholderKey).value;
 }
 
-// í”Œë ˆì´ìŠ¤í™€ë”ë¥¼ ì‹œìŠ¤í…œì— ì ìš©
+// 플레이스홀더를 시스템에 적용
 function applyPlaceholderToSystem(placeholder) {
     const resolvedSettings = resolveEffectiveSettings(placeholder.key);
 
@@ -395,13 +395,13 @@ function applyPlaceholderToSystem(placeholder) {
     registerCustomPlaceholder(placeholder.key, resolvedSettings.content);
 }
 
-// ì»¤ìŠ¤í…€ í”Œë ˆì´ìŠ¤í™€ë” ë“±ë¡
+// 커스텀 플레이스홀더 등록
 function registerCustomPlaceholder(key, content) {
     try {
         const context = getContext();
 
         if (context && context.registerMacro) {
-            // ê¸°ì¡´ ë§¤í¬ë¡œê°€ ìžˆìœ¼ë©´ ë¨¼ì € ì œê±°
+            // 기존 매크로가 있으면 먼저 제거
             if (context.unregisterMacro) {
                 context.unregisterMacro(key);
             }
@@ -413,7 +413,7 @@ function registerCustomPlaceholder(key, content) {
     }
 }
 
-// ì‹œìŠ¤í…œì—ì„œ í”Œë ˆì´ìŠ¤í™€ë” ì œê±°
+// 시스템에서 플레이스홀더 제거
 function removePlaceholderFromSystem(key) {
     try {
         const context = getContext();
@@ -426,14 +426,14 @@ function removePlaceholderFromSystem(key) {
     }
 }
 
-// ëª¨ë“  í”Œë ˆì´ìŠ¤í™€ë” ì ìš©
+// 모든 플레이스홀더 적용
 function applyAllPlaceholders() {
     placeholders.forEach((placeholder) => {
         applyPlaceholderToSystem(placeholder);
     });
 }
 
-// ëª¨ë“  í”Œë ˆì´ìŠ¤í™€ë” ì œê±°
+// 모든 플레이스홀더 제거
 function removeAllPlaceholders() {
     placeholders.forEach((placeholder) => {
         removePlaceholderFromSystem(placeholder.key);
@@ -526,7 +526,7 @@ function renderPresetSelect() {
     const presets = getPresetList(placeholder.key);
 
     select.empty();
-    select.append('<option value="">ì„ íƒ...</option>');
+    select.append('<option value="">선택...</option>');
 
     presets.forEach((preset) => {
         select.append(`<option value="${preset.id}">${preset.name}</option>`);
@@ -541,14 +541,14 @@ function updateAppliedIndicator() {
 
     const placeholder = getPopupCurrentPlaceholder();
     const resolved = resolveEffectiveSettingsWithSource(placeholder.key);
-    let text = "âšª ëª¨ë“  ìŠ¤ì½”í”„ ë¹„í™œì„±";
+    let text = "⚪ 모든 스코프 비활성";
 
     if (resolved.source === "chat") {
-        text = "ðŸŸ¢ ì ìš© ì¤‘: ì±„íŒ… ìŠ¤ì½”í”„";
+        text = "🟢 적용 중: 채팅 스코프";
     } else if (resolved.source === "char") {
-        text = "ðŸŸ¢ ì ìš© ì¤‘: ìºë¦­í„° ìŠ¤ì½”í”„";
+        text = "🟢 적용 중: 캐릭터 스코프";
     } else if (resolved.source === "global") {
-        text = "ðŸŸ¢ ì ìš© ì¤‘: ì „ì—­(í´ë°±)";
+        text = "🟢 적용 중: 전역(폴백)";
     }
 
     compactUIPopup.find(".dm-compact--indicator").text(text);
@@ -611,7 +611,7 @@ function escapeHtml(value) {
         .replace(/'/g, "&#39;");
 }
 
-// ì»´íŒ©íŠ¸ UI íŒì—… ë‹«ê¸°
+// 컴팩트 UI 팝업 닫기
 function closeCompactUIPopup() {
     if (compactUIPopup) {
         compactUIPopup.removeClass("dm-compact--active");
@@ -631,7 +631,7 @@ function closeCompactUIPopup() {
     $(document).off("click.compactUI");
 }
 
-// ì»´íŒ©íŠ¸ UI íŒì—… í‘œì‹œ
+// 컴팩트 UI 팝업 표시
 function showCompactUIPopup() {
     if (compactUIPopup) {
         return closeCompactUIPopup();
@@ -650,37 +650,37 @@ function showCompactUIPopup() {
                     <input type="checkbox" class="dm-compact--radio">
                     <div class="dm-compact--title"></div>
                 </div>
-                <button class="dm-compact--nav dm-compact--clear" title="ë‚´ìš© ì§€ìš°ê¸°" type="button">
+                <button class="dm-compact--nav dm-compact--clear" title="내용 지우기" type="button">
                     <i class="fa-solid fa-eraser"></i>
                 </button>
             </div>
 
             <div class="dm-compact--scope-row">
-                <span>ìŠ¤ì½”í”„:</span>
-                <button class="dm-compact--scope-btn" data-scope="global" type="button">ì „ì—­</button>
-                <button class="dm-compact--scope-btn" data-scope="char" type="button">ìºë¦­í„°</button>
-                <button class="dm-compact--scope-btn" data-scope="chat" type="button">ì±„íŒ…</button>
-                <button class="dm-compact--copy-up" type="button" title="ìƒìœ„ ìŠ¤ì½”í”„ ê°’ ë³µì‚¬">
+                <span>스코프:</span>
+                <button class="dm-compact--scope-btn" data-scope="global" type="button">전역</button>
+                <button class="dm-compact--scope-btn" data-scope="char" type="button">캐릭터</button>
+                <button class="dm-compact--scope-btn" data-scope="chat" type="button">채팅</button>
+                <button class="dm-compact--copy-up" type="button" title="상위 스코프 값 복사">
                     <i class="fa-solid fa-arrow-down"></i>
                 </button>
             </div>
 
             <div class="dm-compact--preset-row">
-                <span>í”„ë¦¬ì…‹:</span>
-                <select class="dm-compact--preset-select" aria-label="í”„ë¦¬ì…‹ ì„ íƒ"></select>
-                <button class="dm-compact--preset-btn dm-compact--preset-save" type="button" title="í˜„ìž¬ ë‚´ìš© í”„ë¦¬ì…‹ ì €ìž¥">
+                <span>프리셋:</span>
+                <select class="dm-compact--preset-select" aria-label="프리셋 선택"></select>
+                <button class="dm-compact--preset-btn dm-compact--preset-save" type="button" title="현재 내용 프리셋 저장">
                     <i class="fa-solid fa-floppy-disk"></i>
                 </button>
-                <button class="dm-compact--preset-btn dm-compact--preset-rename" type="button" title="ì„ íƒí•œ í”„ë¦¬ì…‹ ì´ë¦„ ë³€ê²½">
+                <button class="dm-compact--preset-btn dm-compact--preset-rename" type="button" title="선택한 프리셋 이름 변경">
                     <i class="fa-solid fa-pen"></i>
                 </button>
-                <button class="dm-compact--preset-btn dm-compact--preset-delete" type="button" title="ì„ íƒí•œ í”„ë¦¬ì…‹ ì‚­ì œ">
+                <button class="dm-compact--preset-btn dm-compact--preset-delete" type="button" title="선택한 프리셋 삭제">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
             <div class="dm-compact--content">
-                <textarea class="dm-compact--textarea" placeholder="Direction ë‚´ìš©ì„ ìž…ë ¥í•˜ì„¸ìš”..."></textarea>
+                <textarea class="dm-compact--textarea" placeholder="Direction 내용을 입력하세요..."></textarea>
             </div>
             <div class="dm-compact--indicator"></div>
         </div>
@@ -689,19 +689,19 @@ function showCompactUIPopup() {
     compactUIPopup = $(popupHtml);
     $("#nonQRFormItems").append(compactUIPopup);
 
-    // ì• ë‹ˆë©”ì´ì…˜
+    // 애니메이션
     setTimeout(() => {
         if (compactUIPopup) {
             compactUIPopup.addClass("dm-compact--active");
         }
     }, 10);
 
-    // ì´ë²¤íŠ¸ í•¸ë“¤ëŸ¬ ì„¤ì •
+    // 이벤트 핸들러 설정
     setupCompactUIEventListeners();
     syncPopupByCurrentState();
 }
 
-// ì»´íŒ©íŠ¸ UI ì´ë²¤íŠ¸ ë¦¬ìŠ¤ë„ˆ ì„¤ì •
+// 컴팩트 UI 이벤트 리스너 설정
 function setupCompactUIEventListeners() {
     if (!compactUIPopup) return;
 
@@ -722,12 +722,12 @@ function setupCompactUIEventListeners() {
         const sourceValue = getUpperScopeSource(currentScope, placeholder.key);
 
         if (!sourceValue) {
-            alert("ë³µì‚¬í•  ìƒìœ„ ìŠ¤ì½”í”„ ê°’ì´ ì—†ìŠµë‹ˆë‹¤.");
+            alert("복사할 상위 스코프 값이 없습니다.");
             return;
         }
 
         if (!setCurrentScopeState(placeholder.key, sourceValue)) {
-            console.warn(`${LOG_PREFIX} í˜„ìž¬ ìŠ¤ì½”í”„ì— ê°’ì„ ì €ìž¥í•˜ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.`);
+            console.warn(`${LOG_PREFIX} 현재 스코프에 값을 저장하지 못했습니다.`);
             return;
         }
 
@@ -736,7 +736,7 @@ function setupCompactUIEventListeners() {
         syncPopupByCurrentState();
     });
 
-    // ë¼ë””ì˜¤ ë²„íŠ¼ ë³€ê²½ ì´ë²¤íŠ¸
+    // 라디오 버튼 변경 이벤트
     compactUIPopup.find(".dm-compact--radio").on("change", function () {
         const isEnabled = $(this).is(":checked");
         const currentPlaceholder = getPopupCurrentPlaceholder();
@@ -744,11 +744,11 @@ function setupCompactUIEventListeners() {
         scopedValue.enabled = isEnabled;
 
         if (!setCurrentScopeState(currentPlaceholder.key, scopedValue)) {
-            console.warn(`${LOG_PREFIX} í˜„ìž¬ ìŠ¤ì½”í”„ì— ê°’ì„ ì €ìž¥í•˜ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.`);
+            console.warn(`${LOG_PREFIX} 현재 스코프에 값을 저장하지 못했습니다.`);
             return;
         }
 
-        // í…ìŠ¤íŠ¸ì—ì–´ë¦¬ì–´ í™œì„±í™”/ë¹„í™œì„±í™”
+        // 텍스트에어리어 활성화/비활성화
         const textarea = compactUIPopup.find(".dm-compact--textarea");
         textarea.prop("disabled", !isEnabled);
 
@@ -757,9 +757,9 @@ function setupCompactUIEventListeners() {
         updateAppliedIndicator();
     });
 
-    // ì§€ìš°ê°œ ë²„íŠ¼
+    // 지우개 버튼
     compactUIPopup.find(".dm-compact--clear").on("click", function () {
-        const confirmed = confirm("Direction ë‚´ìš©ì„ ëª¨ë‘ ì§€ìš°ì‹œê² ìŠµë‹ˆê¹Œ?");
+        const confirmed = confirm("Direction 내용을 모두 지우시겠습니까?");
 
         if (confirmed) {
             const currentPlaceholder = getPopupCurrentPlaceholder();
@@ -767,7 +767,7 @@ function setupCompactUIEventListeners() {
             scopedValue.content = "";
 
             if (!setCurrentScopeState(currentPlaceholder.key, scopedValue)) {
-                console.warn(`${LOG_PREFIX} í˜„ìž¬ ìŠ¤ì½”í”„ì— ê°’ì„ ì €ìž¥í•˜ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.`);
+                console.warn(`${LOG_PREFIX} 현재 스코프에 값을 저장하지 못했습니다.`);
                 return;
             }
 
@@ -778,7 +778,7 @@ function setupCompactUIEventListeners() {
         }
     });
 
-    // í…ìŠ¤íŠ¸ì—ì–´ë¦¬ì–´ ë³€ê²½ ì´ë²¤íŠ¸
+    // 텍스트에어리어 변경 이벤트
     compactUIPopup.find(".dm-compact--textarea").on("input", function () {
         const newContent = String($(this).val());
         const currentPlaceholder = getPopupCurrentPlaceholder();
@@ -786,7 +786,7 @@ function setupCompactUIEventListeners() {
         scopedValue.content = newContent;
 
         if (!setCurrentScopeState(currentPlaceholder.key, scopedValue)) {
-            console.warn(`${LOG_PREFIX} í˜„ìž¬ ìŠ¤ì½”í”„ì— ê°’ì„ ì €ìž¥í•˜ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.`);
+            console.warn(`${LOG_PREFIX} 현재 스코프에 값을 저장하지 못했습니다.`);
             return;
         }
 
@@ -815,7 +815,7 @@ function setupCompactUIEventListeners() {
     compactUIPopup.find(".dm-compact--preset-save").on("click", () => {
         const placeholder = getPopupCurrentPlaceholder();
         const textareaValue = String(compactUIPopup.find(".dm-compact--textarea").val() || "");
-        const name = prompt("í”„ë¦¬ì…‹ ì´ë¦„ì„ ìž…ë ¥í•˜ì„¸ìš”:", "ìƒˆ í”„ë¦¬ì…‹");
+        const name = prompt("프리셋 이름을 입력하세요:", "새 프리셋");
 
         if (!name || !name.trim()) {
             return;
@@ -849,7 +849,7 @@ function setupCompactUIEventListeners() {
             return;
         }
 
-        const newName = prompt("ìƒˆ í”„ë¦¬ì…‹ ì´ë¦„ì„ ìž…ë ¥í•˜ì„¸ìš”:", target.name);
+        const newName = prompt("새 프리셋 이름을 입력하세요:", target.name);
 
         if (!newName || !newName.trim()) {
             return;
@@ -875,7 +875,7 @@ function setupCompactUIEventListeners() {
             return;
         }
 
-        const confirmed = confirm("ì„ íƒí•œ í”„ë¦¬ì…‹ì„ ì‚­ì œí•˜ì‹œê² ìŠµë‹ˆê¹Œ?");
+        const confirmed = confirm("선택한 프리셋을 삭제하시겠습니까?");
 
         if (!confirmed) {
             return;
@@ -888,7 +888,7 @@ function setupCompactUIEventListeners() {
         renderPresetSelect();
     });
 
-    // ì™¸ë¶€ í´ë¦­ì‹œ ë‹«ê¸°
+    // 외부 클릭시 닫기
     $(document).on("click.compactUI", (e) => {
         if (!$(e.target).closest(".dm-compact--popup, .dm-compact--button").length) {
             closeCompactUIPopup();
@@ -904,7 +904,7 @@ function refreshPopupIfOpened() {
     syncPopupByCurrentState();
 }
 
-// ì»´íŒ©íŠ¸ UI ë²„íŠ¼ ì¶”ê°€
+// 컴팩트 UI 버튼 추가
 function addCompactUIButton() {
     const ta = document.querySelector("#send_textarea");
 
@@ -913,14 +913,14 @@ function addCompactUIButton() {
         return;
     }
 
-    // ê¸°ì¡´ ë²„íŠ¼ ì œê±°
+    // 기존 버튼 제거
     if (compactUIButton) {
         compactUIButton.remove();
         compactUIButton = null;
     }
 
     const buttonHtml = `
-        <div class="dm-compact--button menu_button" title="Direction Manager ë¹ ë¥¸ íŽ¸ì§‘">
+        <div class="dm-compact--button menu_button" title="Direction Manager 빠른 편집">
             <i class="fa-solid fa-feather"></i>
         </div>
     `;
@@ -928,7 +928,7 @@ function addCompactUIButton() {
     compactUIButton = $(buttonHtml);
     $(ta).after(compactUIButton);
 
-    // í™•ìž¥ í™œì„±í™” ìƒíƒœì— ë”°ë¼ ë²„íŠ¼ í‘œì‹œ/ìˆ¨ê¹€
+    // 확장 활성화 상태에 따라 버튼 표시/숨김
     const settings = getSettings();
 
     if (settings && settings.extensionEnabled) {
@@ -937,43 +937,43 @@ function addCompactUIButton() {
         compactUIButton.hide();
     }
 
-    // í´ë¦­ ì´ë²¤íŠ¸
+    // 클릭 이벤트
     compactUIButton.on("click", showCompactUIPopup);
 }
 
-// í™•ìž¥ ë©”ë‰´ ì´ˆê¸°í™”
+// 확장 메뉴 초기화
 async function initializeExtensionMenu() {
     try {
-        // HTML ë¡œë“œ ë° ì‚½ìž…
+        // HTML 로드 및 삽입
         const html = await $.get(`/scripts/extensions/third-party/${extensionName}/settings.html`);
         $("#extensions_settings").append(html);
 
-        // UI ì—…ë°ì´íŠ¸
+        // UI 업데이트
         updateExtensionMenuUI();
 
-        // ì´ë²¤íŠ¸ í•¸ë“¤ëŸ¬ ì„¤ì •
+        // 이벤트 핸들러 설정
         setupExtensionMenuEventHandlers();
 
-        console.log(`${LOG_PREFIX} í™•ìž¥ ë©”ë‰´ ì´ˆê¸°í™” ì™„ë£Œ`);
+        console.log(`${LOG_PREFIX} 확장 메뉴 초기화 완료`);
     } catch (error) {
-        console.error(`${LOG_PREFIX} í™•ìž¥ ë©”ë‰´ ì´ˆê¸°í™” ì‹¤íŒ¨:`, error);
+        console.error(`${LOG_PREFIX} 확장 메뉴 초기화 실패:`, error);
     }
 }
 
-// í™•ìž¥ ë©”ë‰´ UI ì—…ë°ì´íŠ¸
+// 확장 메뉴 UI 업데이트
 function updateExtensionMenuUI() {
     const settings = getSettings();
 
-    // í™œì„±í™” ì²´í¬ë°•ìŠ¤ ìƒíƒœ ì„¤ì •
+    // 활성화 체크박스 상태 설정
     $("#direction_manager_enabled").prop("checked", settings.extensionEnabled);
 
-    // í”„ë¡¬í”„íŠ¸ í…ìŠ¤íŠ¸ ì„¤ì •
+    // 프롬프트 텍스트 설정
     $("#direction_prompt_text").val(settings.directionPrompt || DEFAULT_DIRECTION_PROMPT);
 
-    // Depth ì„¤ì •
+    // Depth 설정
     $("#direction_prompt_depth").val(settings.promptDepth || 1);
 
-    // ê¸°ë³¸ ìŠ¤ì½”í”„ ì„¤ì •
+    // 기본 스코프 설정
     $("#direction_default_scope").val(settings.defaultScope || "chat");
 }
 
@@ -981,11 +981,11 @@ function clearCurrentCharScopeData() {
     const key = getCurrentCharKey();
 
     if (!key) {
-        alert("í˜„ìž¬ ìºë¦­í„°ë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
+        alert("현재 캐릭터를 찾을 수 없습니다.");
         return;
     }
 
-    const confirmed = confirm("í˜„ìž¬ ìºë¦­í„° ì „ìš© ì €ìž¥ ë‚´ìš©ì„ ì‚­ì œí•˜ì‹œê² ìŠµë‹ˆê¹Œ?");
+    const confirmed = confirm("현재 캐릭터 전용 저장 내용을 삭제하시겠습니까?");
 
     if (!confirmed) {
         return;
@@ -1002,11 +1002,11 @@ function clearCurrentChatScopeData() {
     const key = getCurrentChatKey();
 
     if (!key) {
-        alert("í˜„ìž¬ ì±„íŒ…ì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
+        alert("현재 채팅을 찾을 수 없습니다.");
         return;
     }
 
-    const confirmed = confirm("í˜„ìž¬ ì±„íŒ… ì „ìš© ì €ìž¥ ë‚´ìš©ì„ ì‚­ì œí•˜ì‹œê² ìŠµë‹ˆê¹Œ?");
+    const confirmed = confirm("현재 채팅 전용 저장 내용을 삭제하시겠습니까?");
 
     if (!confirmed) {
         return;
@@ -1019,26 +1019,26 @@ function clearCurrentChatScopeData() {
     refreshPopupIfOpened();
 }
 
-// í™•ìž¥ ë©”ë‰´ ì´ë²¤íŠ¸ í•¸ë“¤ëŸ¬ ì„¤ì •
+// 확장 메뉴 이벤트 핸들러 설정
 function setupExtensionMenuEventHandlers() {
-    // í™œì„±í™” ì²´í¬ë°•ìŠ¤ ë³€ê²½ ì´ë²¤íŠ¸ (ì „ì²´ í™•ìž¥ ê¸°ëŠ¥ ì œì–´)
+    // 활성화 체크박스 변경 이벤트 (전체 확장 기능 제어)
     $("#direction_manager_enabled").on("change", function () {
         const isEnabled = $(this).is(":checked");
         getSettings().extensionEnabled = isEnabled;
 
         if (isEnabled) {
-            // í™•ìž¥ í™œì„±í™” ì‹œ: ì»´íŒ©íŠ¸ UI ë²„íŠ¼ í‘œì‹œ ë° ëª¨ë“  í”Œë ˆì´ìŠ¤í™€ë” ì ìš©
+            // 확장 활성화 시: 컴팩트 UI 버튼 표시 및 모든 플레이스홀더 적용
             if (compactUIButton) {
                 compactUIButton.show();
             }
 
             applyAllPlaceholders();
         } else {
-            // í™•ìž¥ ë¹„í™œì„±í™” ì‹œ: ì»´íŒ©íŠ¸ UI ë²„íŠ¼ ìˆ¨ê¹€ ë° ëª¨ë“  ë§¤í¬ë¡œ ì œê±°
+            // 확장 비활성화 시: 컴팩트 UI 버튼 숨김 및 모든 매크로 제거
             if (compactUIButton) {
                 compactUIButton.hide();
 
-                // íŒì—…ì´ ì—´ë ¤ìžˆìœ¼ë©´ ë‹«ê¸°
+                // 팝업이 열려있으면 닫기
                 if (compactUIPopup) {
                     closeCompactUIPopup();
                 }
@@ -1050,20 +1050,20 @@ function setupExtensionMenuEventHandlers() {
         saveSettingsDebounced();
     });
 
-    // í”„ë¡¬í”„íŠ¸ í…ìŠ¤íŠ¸ ë³€ê²½ ì´ë²¤íŠ¸ (ì‹¤ì‹œê°„ ì €ìž¥)
+    // 프롬프트 텍스트 변경 이벤트 (실시간 저장)
     $("#direction_prompt_text").on("input", function () {
         getSettings().directionPrompt = $(this).val();
         saveSettingsDebounced();
     });
 
-    // Depth ì„¤ì • ë³€ê²½ ì´ë²¤íŠ¸
+    // Depth 설정 변경 이벤트
     $("#direction_prompt_depth").on("input", function () {
         const value = parseInt(String($(this).val()), 10);
         getSettings().promptDepth = Number.isNaN(value) ? 1 : value;
         saveSettingsDebounced();
     });
 
-    // ê¸°ë³¸ ìŠ¤ì½”í”„ ì„¤ì • ë³€ê²½ ì´ë²¤íŠ¸
+    // 기본 스코프 설정 변경 이벤트
     $("#direction_default_scope").on("change", function () {
         const value = String($(this).val());
 
@@ -1073,7 +1073,7 @@ function setupExtensionMenuEventHandlers() {
         }
     });
 
-    // ê¸°ë³¸ê°’ ì´ˆê¸°í™” ë²„íŠ¼
+    // 기본값 초기화 버튼
     $("#direction_reset_prompt").on("click", function () {
         $("#direction_prompt_text").val(DEFAULT_DIRECTION_PROMPT);
         $("#direction_prompt_depth").val(1);
@@ -1093,72 +1093,72 @@ function handleContextChanged() {
     refreshPopupIfOpened();
 }
 
-// í”„ë¡¬í”„íŠ¸ ì£¼ìž… í•¨ìˆ˜
+// 프롬프트 주입 함수
 function injectDirectionPrompt(eventData) {
     const settings = getSettings();
 
-    // í™•ìž¥ì´ ë¹„í™œì„±í™”ë˜ì–´ ìžˆìœ¼ë©´ ì£¼ìž…í•˜ì§€ ì•ŠìŒ
+    // 확장이 비활성화되어 있으면 주입하지 않음
     if (!settings.extensionEnabled) {
         return;
     }
 
     const directionSettings = resolveEffectiveSettings("direction");
 
-    // Direction í† ê¸€ì´ ë¹„í™œì„±í™”ë˜ì–´ ìžˆìœ¼ë©´ ì£¼ìž…í•˜ì§€ ì•ŠìŒ
+    // Direction 토글이 비활성화되어 있으면 주입하지 않음
     if (!directionSettings.enabled) {
         return;
     }
 
-    // í”„ë¡¬í”„íŠ¸ê°€ ë¹„ì–´ìžˆìœ¼ë©´ ì£¼ìž…í•˜ì§€ ì•ŠìŒ
+    // 프롬프트가 비어있으면 주입하지 않음
     if (!settings.directionPrompt || settings.directionPrompt.trim() === "") {
         return;
     }
 
-    // í”Œë ˆì´ìŠ¤í™€ë” ì¹˜í™˜
+    // 플레이스홀더 치환
     let processedPrompt = settings.directionPrompt;
 
     processedPrompt = processedPrompt
         .replace(/\{\{direction\}\}/g, directionSettings.content || "")
-        // ì˜ˆì „ì— ì»¤ìŠ¤í…€ í”„ë¡¬í”„íŠ¸ì— ë‚¨ê¸´ í”ì ì´ ìžˆì–´ë„ í™•ìž¥ì—ì„œëŠ” ë” ì´ìƒ ì²˜ë¦¬í•˜ì§€ ì•ŠìŒ
+        // 예전에 커스텀 프롬프트에 남긴 흔적이 있어도 확장에서는 더 이상 처리하지 않음
         .replace(/\{\{char\}\}/g, "")
         .replace(/\{\{user\}\}/g, "");
 
     const depth = settings.promptDepth || 1;
 
-    // ì°¸ê³  íŒŒì¼ ë°©ì‹: eventData.chat ë˜ëŠ” eventData.messages í™•ì¸
+    // 참고 파일 방식: eventData.chat 또는 eventData.messages 확인
     const messages = eventData.chat || eventData.messages;
 
     if (messages && Array.isArray(messages)) {
-        // system ë©”ì‹œì§€ ìƒì„±
+        // system 메시지 생성
         const systemMessage = {
             role: "system",
             content: processedPrompt,
         };
 
-        // ì°¸ê³  íŒŒì¼ì˜ ë°©ì‹ì„ ë”°ë¼ depth ì ìš©
+        // 참고 파일의 방식을 따라 depth 적용
         if (depth === 0) {
-            // ë§¨ ëì— ì¶”ê°€
+            // 맨 끝에 추가
             messages.push(systemMessage);
         } else {
-            // ëì—ì„œë¶€í„° Në²ˆì§¸ ìœ„ì¹˜ì— ì‚½ìž…
+            // 끝에서부터 N번째 위치에 삽입
             const insertIndex = Math.max(messages.length - depth, 0);
             messages.splice(insertIndex, 0, systemMessage);
         }
     }
 }
 
-// í™•ìž¥ ì´ˆê¸°í™”
+// 확장 초기화
 jQuery(async () => {
     await loadSettings();
     applyAllPlaceholders();
 
-    // í™•ìž¥ ë©”ë‰´ ì´ˆê¸°í™”
+    // 확장 메뉴 초기화
     await initializeExtensionMenu();
 
-    // ì»´íŒ©íŠ¸ UI ë²„íŠ¼ ì¶”ê°€
+    // 컴팩트 UI 버튼 추가
     addCompactUIButton();
 
-    // í”„ë¡¬í”„íŠ¸ ì£¼ìž… ì´ë²¤íŠ¸ ë¦¬ìŠ¤ë„ˆ ë“±ë¡
+    // 프롬프트 주입 이벤트 리스너 등록
     eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, injectDirectionPrompt);
     eventSource.on(event_types.CHAT_CHANGED, handleContextChanged);
 
