@@ -1,5 +1,4 @@
-/* Direction-Manager 확장 스타일 - 컴팩트 UI 전용 */
-
+/* Direction-Manager 확장 스타일 - direction 전용 컴팩트 UI */
 
 /* 컴팩트 UI 버튼 스타일 */
 .dm-compact--button {
@@ -52,40 +51,21 @@
     opacity: 1;
 }
 
+/* 헤더: direction 하나만 표시하므로 좌우 이동 버튼 공간 제거 */
 .dm-compact--header {
     display: flex;
     align-items: center;
     padding: 8px 12px;
     border-bottom: 1px solid var(--SmartThemeBorderColor);
     background-color: var(--SmartThemeBlurTintColor);
-    gap: 6px;
-}
-
-.dm-compact--nav {
-    background: transparent;
-    border: 1px solid var(--SmartThemeBorderColor);
-    color: var(--SmartThemeBodyColor);
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    font-size: 12px;
-}
-
-.dm-compact--nav:hover {
-    background-color: var(--SmartThemeQuoteColor);
-    color: var(--SmartThemeBodyColor);
+    gap: 8px;
 }
 
 .dm-compact--title-row {
     flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 6px;
 }
 
@@ -123,6 +103,32 @@
     box-shadow: none;
 }
 
+/* 헤더의 지우개 버튼. 예전 prev/next 이동 버튼은 index.js에서 제거됨 */
+.dm-compact--nav,
+.dm-compact--preset-btn,
+.dm-compact--copy-up {
+    background: transparent;
+    border: 1px solid var(--SmartThemeBorderColor);
+    color: var(--SmartThemeBodyColor);
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.dm-compact--nav:hover,
+.dm-compact--preset-btn:hover,
+.dm-compact--copy-up:hover:not(:disabled) {
+    background-color: var(--SmartThemeQuoteColor);
+    color: var(--SmartThemeBodyColor);
+}
+
 .dm-compact--scope-row {
     display: flex;
     gap: 6px;
@@ -146,28 +152,15 @@
     background-color: var(--SmartThemeQuoteColor);
 }
 
-.dm-compact--scope-btn:disabled {
+.dm-compact--scope-btn:disabled,
+.dm-compact--copy-up:disabled,
+.dm-compact--preset-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
 
 .dm-compact--copy-up {
     margin-left: auto;
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
-    border: 1px solid var(--SmartThemeBorderColor);
-    background: transparent;
-    color: var(--SmartThemeBodyColor);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.dm-compact--copy-up:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
 }
 
 .dm-compact--preset-row {
@@ -187,31 +180,6 @@
     color: var(--SmartThemeBodyColor);
     height: 28px;
     padding: 0 6px;
-}
-
-.dm-compact--preset-btn {
-    background: transparent;
-    border: 1px solid var(--SmartThemeBorderColor);
-    color: var(--SmartThemeBodyColor);
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    font-size: 12px;
-}
-
-.dm-compact--preset-btn:hover {
-    background-color: var(--SmartThemeQuoteColor);
-    color: var(--SmartThemeBodyColor);
-}
-
-.dm-compact--preset-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
 }
 
 .dm-compact--content {
@@ -277,7 +245,7 @@
 
     .dm-compact--header {
         padding: 6px 8px;
-        gap: 4px;
+        gap: 6px;
     }
 
     .dm-compact--nav,
